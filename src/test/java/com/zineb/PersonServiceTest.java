@@ -1,79 +1,91 @@
 package com.zineb;
 
 import java.time.LocalDate;
-import java.util.*;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.ConcurrentModificationException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.Test;
 
 public class PersonServiceTest {
 
-    public static List<Person> filterByAddress(String address) {
-        List<Person> mockPersonsDatabase = Arrays.asList(
-                Person.builder().firstName("Zineb").familyName("El Mouden").birthDate(LocalDate.of(1995, 1, 10))
+    @Test
+    public void testFindByAddress() {
+        List<Person> peopleLivingIn123RueA = PersonService.findByAddress("123 Rue A");
+        List<Person> expectedPersonsLivingIn123RueA = Arrays.asList(
+                Person.builder().firstName("Zineb").familyName("El Mouden")
+                        .birthDate(LocalDate.of(1995, 1, 10))
                         .address("123 Rue A").build(),
-                Person.builder().firstName("Basma").familyName("El Harrat").birthDate(LocalDate.of(1990, 4, 22))
-                        .address("456 Rue B").build(),
-                Person.builder().firstName("Mohammed").familyName("Ziani").birthDate(LocalDate.of(1987, 9, 15))
+                Person.builder().firstName("Mohammed").familyName("Ziani")
+                        .birthDate(LocalDate.of(1987, 9, 15))
                         .address("123 Rue A").build()
         );
 
-        Predicate<Person> hasAddress = person -> person.getAddress().equals(address);
-
-        return mockPersonsDatabase.stream()
-                .filter(hasAddress)
-                .collect(Collectors.toList());
+        // Vérification avec AssertJ
+        assertThat(peopleLivingIn123RueA).containsExactlyInAnyOrderElementsOf(expectedPersonsLivingIn123RueA);
     }
 
-    public static List<Person> filterAdults() {
-        List<Person> mockPersonsDatabase = Arrays.asList(
-                Person.builder().firstName("Zineb").familyName("El Mouden").birthDate(LocalDate.of(1995, 1, 10))
+    @Test
+    public void testFindAdult() {
+        List<Person> adults = PersonService.findAdult();
+
+        // Liste attendue des adultes (18 ans ou plus)
+        List<Person> expectedAdultPersons = Arrays.asList(
+                Person.builder().firstName("Zineb").familyName("El Mouden")
+                        .birthDate(LocalDate.of(1995, 1, 10))
                         .address("123 Rue A").build(),
-                Person.builder().firstName("Basma").familyName("El Harrat").birthDate(LocalDate.of(1990, 4, 22))
-                        .address("456 Rue B").build(),
-                Person.builder().firstName("Ahmed").familyName("Noureddine").birthDate(LocalDate.of(2007, 7, 20))
-                        .address("123 Rue A").build()
+                Person.builder().firstName("Basma").familyName("El Harrat")
+                        .birthDate(LocalDate.of(1990, 4, 22))
+                        .address("456 Rue B").build()
         );
 
-        Predicate<Person> isAdult = person -> person.getAge() >= 18;
-
-        return mockPersonsDatabase.stream()
-                .filter(isAdult)
-                .collect(Collectors.toList());
+        // Vérification avec AssertJ
+        assertThat(adults).containsExactlyInAnyOrderElementsOf(expectedAdultPersons);
     }
 
-    public static Set<Person> removeSpecificPersonWithoutIterator() {
-        Set<Person> people = new HashSet<>();
-        people.add(Person.builder().firstName("Yassine").familyName("Sebbahi").build());
-        people.add(Person.builder().firstName("Ahmed").familyName("Noureddine").build());
+    @Test
+    public void testSortPerson() {
+        List<Person> people = new ArrayList<>();
+        people.add(Person.builder().firstName("Hajar").familyName("Oulabasse").build());
+        people.add(Person.builder().firstName("Mohammed").familyName("Ziani").build());
+        people.add(Person.builder().firstName("Zineb").familyName("El Mouden").build());
         people.add(Person.builder().firstName("Basma").familyName("El Harrat").build());
 
-        try {
-            for (Person person : people) {
-                if (person.getFamilyName().equals("Noureddine")) {
-                    people.remove(person);
-                }
-            }
-        } catch (ConcurrentModificationException e) {
-            System.out.println("Erreur : Suppression sans iterator non sécurisée !");
-        }
+        // Tri de la liste de personnes
+        Collections.sort(people);
 
-        return people;
+        assertThat(people.get(0))
+                .isEqualTo(Person.builder().firstName("Zineb").familyName("El Mouden").build());
+        assertThat(people.get(1))
+                .isEqualTo(Person.builder().firstName("Basma").familyName("El Harrat").build());
+        assertThat(people.get(2))
+                .isEqualTo(Person.builder().firstName("Hajar").familyName("Oulabasse").build());
+        assertThat(people.get(3))
+                .isEqualTo(Person.builder().firstName("Mohammed").familyName("Ziani").build());
     }
 
-    public static Set<Person> removeSpecificPersonUsingIterator() {
+    @Test
+    public void testRemoveNoureddineWithoutIterator() {
+        assertThatThrownBy(() -> PersonService.removeNoureddineWithoutIterator())
+                .isInstanceOf(ConcurrentModificationException.class);
+    }
+
+    @Test
+    public void removeNoureddineUsingIterator() {
         Set<Person> people = new HashSet<>();
-        people.add(Person.builder().firstName("Yassine").familyName("Sebbahi").build());
-        people.add(Person.builder().firstName("Ahmed").familyName("Noureddine").build());
+        people.add(Person.builder().firstName("Zineb").familyName("El Mouden").build());
         people.add(Person.builder().firstName("Basma").familyName("El Harrat").build());
+        people.add(Person.builder().firstName("Hajar").familyName("Oulabasse").build());
+        people.add(Person.builder().firstName("Mohammed").familyName("Ziani").build());
 
-        Iterator<Person> iterator = people.iterator();
-        while (iterator.hasNext()) {
-            Person person = iterator.next();
-            if (person.getFamilyName().equals("Noureddine")) {
-                iterator.remove();
-            }
-        }
+        Set<Person> peopleWithoutNoureddine = PersonService.removeNoureddineUsingIterator();
 
-        return people;
+        assertThat(peopleWithoutNoureddine).containsExactlyInAnyOrderElementsOf(people);
     }
 }
